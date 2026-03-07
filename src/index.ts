@@ -13,6 +13,10 @@ import {
 import z from "zod";
 
 import { auth } from "./lib/auth.js";
+import { aiRoutes } from "./routes/ai.js";
+import { homeRoutes } from "./routes/home.js";
+import { meRoutes } from "./routes/me.js";
+import { statsRoutes } from "./routes/stats.js";
 import { workoutPlanRoutes } from "./routes/workout-plan.js";
 
 const app = Fastify({
@@ -25,8 +29,8 @@ app.setSerializerCompiler(serializerCompiler);
 await app.register(fastifySwagger, {
   openapi: {
     info: {
-      title: "Treinos API",
-      description: "API treinos",
+      title: "Bootcamp Treinos API",
+      description: "API para o bootcamp de treinos do FSC",
       version: "1.0.0",
     },
     servers: [
@@ -49,8 +53,8 @@ await app.register(fastifyApiReference, {
   configuration: {
     sources: [
       {
-        title: "Treinos API",
-        slug: "treinos-api",
+        title: "Bootcamp Treinos API",
+        slug: "bootcamp-treinos-api",
         url: "/swagger.json",
       },
       {
@@ -62,7 +66,13 @@ await app.register(fastifyApiReference, {
   },
 });
 
+// RESTful
+// Routes
+await app.register(homeRoutes, { prefix: "/home" });
+await app.register(meRoutes, { prefix: "/me" });
+await app.register(statsRoutes, { prefix: "/stats" });
 await app.register(workoutPlanRoutes, { prefix: "/workout-plans" });
+await app.register(aiRoutes, { prefix: "/ai" });
 
 app.withTypeProvider<ZodTypeProvider>().route({
   method: "GET",
@@ -79,8 +89,8 @@ app.withTypeProvider<ZodTypeProvider>().route({
   method: "GET",
   url: "/",
   schema: {
-    description: "hello world",
-    tags: ["hello world"],
+    description: "Hello world",
+    tags: ["Hello World"],
     response: {
       200: z.object({
         message: z.string(),
@@ -89,7 +99,7 @@ app.withTypeProvider<ZodTypeProvider>().route({
   },
   handler: () => {
     return {
-      message: "hello world",
+      message: "Hello World",
     };
   },
 });
@@ -99,21 +109,23 @@ app.route({
   url: "/api/auth/*",
   async handler(request, reply) {
     try {
+      // Construct request URL
       const url = new URL(request.url, `http://${request.headers.host}`);
 
+      // Convert Fastify headers to standard Headers object
       const headers = new Headers();
       Object.entries(request.headers).forEach(([key, value]) => {
         if (value) headers.append(key, value.toString());
       });
-
+      // Create Fetch API-compatible request
       const req = new Request(url.toString(), {
         method: request.method,
         headers,
         ...(request.body ? { body: JSON.stringify(request.body) } : {}),
       });
-
+      // Process authentication request
       const response = await auth.handler(req);
-
+      // Forward response to client
       reply.status(response.status);
       response.headers.forEach((value, key) => reply.header(key, value));
       reply.send(response.body ? await response.text() : null);
